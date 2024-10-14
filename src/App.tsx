@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { FaPlane } from 'react-icons/fa';
+import { PDFDocument, rgb } from 'pdf-lib';
+import { saveAs } from 'file-saver';
+import Logo from '/public/logo.png'; // Make sure the path to the logo image is correct
 
 const App: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -13,13 +13,13 @@ const App: React.FC = () => {
     telephoneNo: '',
     email: '',
     vessel: '',
-    billNo: ''
+    billNo: '',
   });
 
   const sigCanvas = useRef<SignatureCanvas>(null);
-  const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,65 +33,98 @@ const App: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Validate form fields
-    if (!formData.companyName || !formData.email || !formData.vessel) {
-      setFormError('Please fill in all required fields.');
-      setLoading(false);
-      return;
-    }
+    try {
+      // Ensure the URL is valid and defined
+      const url: string | undefined = '/CI.pdf';
 
-    if (sigCanvas.current?.isEmpty()) {
-      setSignatureError('Please provide a signature.');
-      setLoading(false);
-      return;
-    }
-
-    // Generate PDF
-    const formElement = document.getElementById('form');
-    if (formElement) {
-      const canvas = await html2canvas(formElement);
-      const imgData = canvas.toDataURL('image/png');
-
-      // Define A4 size in mm (210 x 297 mm)
-      const imgWidth = 210; // A4 page width in mm
-      const pageHeight = 297; // A4 page height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width; // Maintain aspect ratio
-
-      const pdf = new jsPDF('portrait', 'mm', 'a4');
-
-      // If the content height is longer than A4, add pages
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      if (!url) {
+        console.error('The URL is undefined or invalid.');
+        setLoading(false);
+        return;
       }
 
-      // Download the PDF
-      pdf.save('clearing-instruction.pdf');
-    }
+      // Fetch the existing PDF bytes
+      const response = await fetch(url);
 
-    setLoading(false);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+      }
+
+      const existingPdfBytes = await response.arrayBuffer();
+
+      // Load a PDFDocument from the existing PDF
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+
+      // Get the first page of the document
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+
+      // Define font size and positions for fields
+      const fontSize = 12;
+      const { height } = firstPage.getSize();
+
+      // Draw text fields onto the first page
+      firstPage.drawText(formData.companyName, { x: 100, y: height - 100, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.companyRegNo, { x: 100, y: height - 120, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.vatNo, { x: 100, y: height - 140, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.contactPerson, { x: 100, y: height - 160, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.telephoneNo, { x: 100, y: height - 180, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.email, { x: 100, y: height - 200, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.vessel, { x: 100, y: height - 220, size: fontSize, color: rgb(0, 0, 0) });
+      firstPage.drawText(formData.billNo, { x: 100, y: height - 240, size: fontSize, color: rgb(0, 0, 0) });
+
+      // Check if the signature exists
+      const trimmedCanvas = sigCanvas.current?.getTrimmedCanvas();
+      if (!trimmedCanvas) {
+        console.error('Signature canvas is empty or not available.');
+        setSignatureError('Please provide a signature.');
+        setLoading(false);
+        return;
+      }
+
+      // Convert the signature to image
+      const signatureImage = trimmedCanvas.toDataURL('image/png');
+
+      if (!signatureImage) {
+        console.error('Failed to get signature image.');
+        setLoading(false);
+        return;
+      }
+
+      // Embed the signature image in the PDF
+      const pngImageBytes = await fetch(signatureImage).then((res) => res.arrayBuffer());
+      const pngImage = await pdfDoc.embedPng(pngImageBytes);
+      firstPage.drawImage(pngImage, {
+        x: 100,
+        y: height - 300,
+        width: 150,
+        height: 50,
+      });
+
+      // Serialize the PDFDocument to bytes
+      const pdfBytes = await pdfDoc.save();
+
+      // Trigger file download
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      saveAs(blob, 'completed-form.pdf');
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setLoading(false);
+    }
   };
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-between bg-gray-50">
-      {/* Background design */}
-      <div className="absolute inset-0 z-0">
-        <div className="h-[50%] bg-gray-100"></div>
-        <div
-          className="h-[50%] bg-plum"
-          style={{ clipPath: 'polygon(0 10%, 100% 0%, 100% 100%, 0% 90%)' }}
-        ></div>
-      </div>
-
-      {/* Form Section */}
+      {/* Background Design */}
+    <div className="absolute inset-0 w-full h-full z-0">
+      <div className="h-[50%] bg-gray-100"></div>
+      <div
+        className="h-[50%] bg-customRed"
+        style={{ clipPath: 'polygon(0 10%, 100% 0%, 100% 100%, 0% 90%)' }}
+      ></div>
+    </div>
       <div className="relative z-10 bg-white p-8 sm:p-10 md:p-12 rounded-xl shadow-lg w-full max-w-lg mx-auto mt-10 mb-10">
         <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">Import Clearing Instruction</h2>
 
@@ -225,7 +258,7 @@ const App: React.FC = () => {
           >
             {loading ? (
               <span className="flex items-center">
-                <FaPlane className="mr-2 animate-spin" /> Generating PDF...
+                Generating PDF...
               </span>
             ) : (
               'Generate PDF'
@@ -234,11 +267,10 @@ const App: React.FC = () => {
         </form>
       </div>
 
-      {/* Footer Section */}
       <footer className="relative z-20 w-full bg-white py-4">
         <div className="max-w-md mx-auto flex items-center justify-center">
           <span className="text-sm text-gray-500 mr-2">Powered by</span>
-          <img src="/logo.png" alt="Logo" className="w-16 h-auto" />
+          <img src={Logo} alt="Company Logo" className="w-16 h-auto" />
         </div>
       </footer>
     </div>
