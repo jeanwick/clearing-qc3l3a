@@ -2,9 +2,7 @@ import React, { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import emailjs from 'emailjs-com';
 import { FaPlane } from 'react-icons/fa';
-import Logo from './assets/logo.png'; // Adjust this path to your logo file
 
 const App: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -31,7 +29,7 @@ const App: React.FC = () => {
     sigCanvas.current?.clear();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleGeneratePDF = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -53,27 +51,33 @@ const App: React.FC = () => {
     if (formElement) {
       const canvas = await html2canvas(formElement);
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF();
-      pdf.addImage(imgData, 'PNG', 0, 0);
 
-      // Send the form data via email using emailjs
-      emailjs.send(
-        'service_id', // Replace with your emailjs service ID
-        'template_id', // Replace with your emailjs template ID
-        {
-          to_email: formData.email,
-          message: 'Please find attached the signed clearing instruction.',
-        }
-      )
-      .then(() => {
-        alert('Email sent successfully!');
-        setLoading(false);
-      })
-      .catch((error) => {
-        alert('Error sending email: ' + error.text);
-        setLoading(false);
-      });
+      // Define A4 size in mm (210 x 297 mm)
+      const imgWidth = 210; // A4 page width in mm
+      const pageHeight = 297; // A4 page height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width; // Maintain aspect ratio
+
+      const pdf = new jsPDF('portrait', 'mm', 'a4');
+
+      // If the content height is longer than A4, add pages
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Download the PDF
+      pdf.save('clearing-instruction.pdf');
     }
+
+    setLoading(false);
   };
 
   return (
@@ -93,7 +97,7 @@ const App: React.FC = () => {
 
         {formError && <p className="text-red-500 mb-4">{formError}</p>}
 
-        <form id="form" onSubmit={handleSubmit} className="space-y-4">
+        <form id="form" onSubmit={handleGeneratePDF} className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-gray-700">Company Name</label>
@@ -221,10 +225,10 @@ const App: React.FC = () => {
           >
             {loading ? (
               <span className="flex items-center">
-                <FaPlane className="mr-2 animate-spin" /> Sending...
+                <FaPlane className="mr-2 animate-spin" /> Generating PDF...
               </span>
             ) : (
-              'Submit and Generate PDF'
+              'Generate PDF'
             )}
           </button>
         </form>
@@ -234,7 +238,7 @@ const App: React.FC = () => {
       <footer className="relative z-20 w-full bg-white py-4">
         <div className="max-w-md mx-auto flex items-center justify-center">
           <span className="text-sm text-gray-500 mr-2">Powered by</span>
-          <img src={Logo} alt="Freitan Logo" className="w-16 h-auto" />
+          <img src="/assets/logo.png" alt="Logo" className="w-16 h-auto" />
         </div>
       </footer>
     </div>
