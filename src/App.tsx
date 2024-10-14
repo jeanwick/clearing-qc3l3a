@@ -4,9 +4,9 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import emailjs from 'emailjs-com';
 import { FaPlane } from 'react-icons/fa';
-import Logo from './assets/logo.png'; // Adjust this based on your logo file location
+import Logo from './assets/logo.png'; // Adjust this path to your logo file
 
-const ClearingInstructionForm = () => {
+const App: React.FC = () => {
   const [formData, setFormData] = useState({
     companyName: '',
     companyRegNo: '',
@@ -14,12 +14,8 @@ const ClearingInstructionForm = () => {
     contactPerson: '',
     telephoneNo: '',
     email: '',
-    referenceNo: '',
-    customsCode: '',
     vessel: '',
-    billNo: '',
-    invoiceNumber: '',
-    placeOfClearance: '',
+    billNo: ''
   });
 
   const sigCanvas = useRef<SignatureCanvas>(null);
@@ -39,6 +35,7 @@ const ClearingInstructionForm = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Validate form fields
     if (!formData.companyName || !formData.email || !formData.vessel) {
       setFormError('Please fill in all required fields.');
       setLoading(false);
@@ -51,6 +48,7 @@ const ClearingInstructionForm = () => {
       return;
     }
 
+    // Generate PDF
     const formElement = document.getElementById('form');
     if (formElement) {
       const canvas = await html2canvas(formElement);
@@ -58,26 +56,23 @@ const ClearingInstructionForm = () => {
       const pdf = new jsPDF();
       pdf.addImage(imgData, 'PNG', 0, 0);
 
-      const pdfBlob = pdf.output('blob');
-
-      emailjs
-        .send(
-          'service_id',
-          'template_id',
-          {
-            to_email: formData.email,
-            message: 'Please find attached the signed clearing instruction.',
-          },
-          'user_id'
-        )
-        .then(() => {
-          alert('Email sent successfully!');
-          setLoading(false);
-        })
-        .catch((error) => {
-          alert('Error sending email: ' + error.text);
-          setLoading(false);
-        });
+      // Send the form data via email using emailjs
+      emailjs.send(
+        'service_id', // Replace with your emailjs service ID
+        'template_id', // Replace with your emailjs template ID
+        {
+          to_email: formData.email,
+          message: 'Please find attached the signed clearing instruction.',
+        }
+      )
+      .then(() => {
+        alert('Email sent successfully!');
+        setLoading(false);
+      })
+      .catch((error) => {
+        alert('Error sending email: ' + error.text);
+        setLoading(false);
+      });
     }
   };
 
@@ -94,9 +89,7 @@ const ClearingInstructionForm = () => {
 
       {/* Form Section */}
       <div className="relative z-10 bg-white p-8 sm:p-10 md:p-12 rounded-xl shadow-lg w-full max-w-lg mx-auto mt-10 mb-10">
-        <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">
-          Import Clearing Instruction
-        </h2>
+        <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">Import Clearing Instruction</h2>
 
         {formError && <p className="text-red-500 mb-4">{formError}</p>}
 
@@ -204,16 +197,10 @@ const ClearingInstructionForm = () => {
           </div>
 
           <div className="mt-6">
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
-              Signature
-            </h3>
+            <h3 className="text-lg font-medium text-gray-700 mb-2">Signature</h3>
             <SignatureCanvas
               ref={sigCanvas}
-              canvasProps={{
-                width: 500,
-                height: 200,
-                className: 'border border-gray-300 rounded-md',
-              }}
+              canvasProps={{ width: 500, height: 200, className: 'border border-gray-300 rounded-md' }}
             />
             <button
               type="button"
@@ -222,9 +209,7 @@ const ClearingInstructionForm = () => {
             >
               Clear Signature
             </button>
-            {signatureError && (
-              <p className="text-red-500 mt-2">{signatureError}</p>
-            )}
+            {signatureError && <p className="text-red-500 mt-2">{signatureError}</p>}
           </div>
 
           <button
@@ -256,4 +241,4 @@ const ClearingInstructionForm = () => {
   );
 };
 
-export default ClearingInstructionForm;
+export default App;
