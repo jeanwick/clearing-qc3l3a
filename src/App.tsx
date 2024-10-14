@@ -17,7 +17,7 @@ const App: React.FC = () => {
   });
 
   const sigCanvas = useRef<SignatureCanvas>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError] = useState<string | null>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
