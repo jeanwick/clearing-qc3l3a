@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { saveAs } from 'file-saver';
-import Logo from '/public/logo.png'; // Make sure the path to the logo image is correct
+import Logo from '/public/logo.png';
 
 const App: React.FC = () => {
   const [formData, setFormData] = useState({
