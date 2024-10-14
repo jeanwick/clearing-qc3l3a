@@ -238,7 +238,7 @@ const App: React.FC = () => {
       <footer className="relative z-20 w-full bg-white py-4">
         <div className="max-w-md mx-auto flex items-center justify-center">
           <span className="text-sm text-gray-500 mr-2">Powered by</span>
-          <img src="/assets/logo.png" alt="Logo" className="w-16 h-auto" />
+          <img src="/logo.png" alt="Logo" className="w-16 h-auto" />
         </div>
       </footer>
     </div>
